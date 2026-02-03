@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giffgaff 保号助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container { 
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 { 
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+        .info-box strong {
+            color: #333;
+            display: block;
+            margin-bottom: 5px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        #status {
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        #status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        #status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .stats {
+            font-size: 13px;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+        .warning {
+            font-size: 12px;
+            color: #dc3545;
+            margin-top: 25px;
+            padding: 12px;
+            background: #fff5f5;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+            line-height: 1.6;
+        }
+        .warning strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .history {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .history-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .history-item {
+            font-size: 12px;
+            color: #888;
+            padding: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🇬🇧 Giffgaff 保号</h1>
+        <div class="subtitle">极简流量消耗工具</div>
+        
+        <div class="info-box">
+            <strong>本次将消耗：</strong>
+            约 120 KB 数据流量<br>
+            预计费用：2-3 便士 (£0.02-0.03)
+        </div>
+        
+        <button id="btn" onclick="consumeData()">
+            🚀 开始保号
+        </button>
+        
+        <div id="status"></div>
+        
+        <div class="history">
+            <div class="history-title">使用记录</div>
+            <div id="historyList"></div>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ 使用前必读：</strong>
+            1. 关闭 Wi-Fi，确保使用移动数据<br>
+            2. 禁止其他应用联网权限<br>
+            3. 仅允许浏览器使用移动数据<br>
+            4. 完成后立即关闭移动数据
+        </div>
+    </div>
+
+    <script>
+        // 加载历史记录
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('ggHistory') || '[]');
+            const historyList = document.getElementById('historyList');
+            
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="history-item">暂无记录</div>';
+                return;
+            }
+            
+            historyList.innerHTML = history.slice(-5).reverse().map(item => 
+                `<div class="history-item">✓ ${item.date} - ${item.size} KB</div>`
+            ).join('');
+        }
+        
+        // 保存历史记录
+        function saveHistory(size) {
+            const history = JSON.parse(localStorage.getItem('ggHistory') || '[]');
+            const now = new Date();
+            const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+            
+            history.push({
+                date: dateStr,
+                size: size,
+                timestamp: now.getTime()
+            });
+            
+            // 只保留最近20条记录
+            if (history.length > 20) {
+                history.shift();
+            }
+            
+            localStorage.setItem('ggHistory', JSON.stringify(history));
+            loadHistory();
+        }
+        
+        function consumeData() {
+            const btn = document.getElementById('btn');
+            const status = document.getElementById('status');
+            
+            btn.disabled = true;
+            status.className = 'loading';
+            status.innerHTML = "📡 正在连接服务器...<br><div class='stats'>请保持网络连接</div>";
+
+            // 防缓存：添加时间戳
+            const timestamp = new Date().getTime();
+            const randomStr = Math.random().toString(36).substring(7);
+            const fileUrl = `payload.txt?t=${timestamp}&r=${randomStr}`; 
+
+            const startTime = new Date().getTime();
+
+            fetch(fileUrl, {
+                cache: 'no-store',  // 强制不使用缓存
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('网络请求失败');
+                    return response.blob();
+                })
+                .then(blob => {
+                    const sizeInKB = (blob.size / 1024).toFixed(2);
+                    const duration = ((new Date().getTime() - startTime) / 1000).toFixed(2);
+                    
+                    status.className = 'success';
+                    status.innerHTML = `
+                        ✅ 保号成功！
+                        <div class='stats'>
+                            已消耗：${sizeInKB} KB<br>
+                            耗时：${duration} 秒
+                        </div>
+                    `;
+                    
+                    // 保存记录
+                    saveHistory(sizeInKB);
+                    
+                    btn.disabled = false;
+                    btn.innerText = "🔄 再次保号";
+                })
+                .catch(error => {
+                    status.className = 'error';
+                    status.innerHTML = `
+                        ❌ 操作失败
+                        <div class='stats'>${error.message}</div>
+                    `;
+                    btn.disabled = false;
+                });
+        }
+        
+        // 页面加载时显示历史记录
+        window.onload = loadHistory;
+    </script>
+</body>
+</html>
